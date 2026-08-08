@@ -28,7 +28,13 @@ jobs:
 
       - name: Install Homebrew on Linux
         if: runner.os == 'Linux'
-        uses: Homebrew/actions/setup-homebrew@master
+        run: |
+          sudo mkdir -p /home/linuxbrew/.linuxbrew
+          sudo chown -R "$USER" /home/linuxbrew/.linuxbrew
+          git clone --depth=1 https://github.com/Homebrew/brew /home/linuxbrew/.linuxbrew/Homebrew
+          mkdir -p /home/linuxbrew/.linuxbrew/bin
+          ln -s ../Homebrew/bin/brew /home/linuxbrew/.linuxbrew/bin/brew
+          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
 
       - name: Register checkout as tap
         run: brew tap OpenRouterTeam/tap "$GITHUB_WORKSPACE"
