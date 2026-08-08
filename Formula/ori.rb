@@ -14,8 +14,20 @@ class Ori < Formula
     end
   end
 
+  on_linux do
+    if Hardware::CPU.arm?
+      url "https://github.com/OpenRouterLabs/ori-releases/releases/download/cli-0.5.1-c75fbf8/ori-linux-arm64"
+      sha256 "58f8e5e77e413a63f3df687b2593ba8bbae297015a0bd8fc0e557945515ea1b6"
+    else
+      url "https://github.com/OpenRouterLabs/ori-releases/releases/download/cli-0.5.1-c75fbf8/ori-linux-x64"
+      sha256 "65b86f6b905896a248d822487ea4aaaf1302cddbfb3ef7a400a9b51374bb9d73"
+    end
+  end
+
   def install
-    binary = Hardware::CPU.arm? ? "ori-darwin-arm64" : "ori-darwin-x64"
+    os = OS.mac? ? "darwin" : "linux"
+    arch = Hardware::CPU.arm? ? "arm64" : "x64"
+    binary = "ori-#{os}-#{arch}"
     libexec.install binary => "ori-homebrew"
     chmod 0755, libexec/"ori-homebrew"
     (bin/"ori").write_env_script libexec/"ori-homebrew", ORI_NO_UPDATE_CHECK: "1"

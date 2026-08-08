@@ -11,13 +11,30 @@ permissions:
 
 jobs:
   check:
-    name: Check tap
-    runs-on: macos-15
+    name: Check tap (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-15
+          - ubuntu-24.04
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Register checkout as tap
+        run: brew tap OpenRouterTeam/tap "$GITHUB_WORKSPACE"
+
       - name: Check formulae
         run: scripts/check
+
+      - name: Install and test Ori
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: |
+          brew install OpenRouterTeam/tap/ori
+          brew test OpenRouterTeam/tap/ori
