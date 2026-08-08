@@ -1,0 +1,23 @@
+class <%= class_name %> < Formula
+  desc "TODO: Describe the tool in one sentence"
+  homepage "https://openrouter.ai"
+  version "<%= version %>"
+
+  on_macos do
+    if Hardware::CPU.arm?
+      url "<%= arm64_url %>"
+      sha256 "<%= arm64_sha256 %>"
+    else
+      url "<%= x86_64_url %>"
+      sha256 "<%= x86_64_sha256 %>"
+    end
+  end
+
+  def install
+    bin.install "<%= name %>"
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/<%= name %> --version")
+  end
+end

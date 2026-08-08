@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "erb"
+require "pathname"
+require "uri"
+
+USAGE = <<~TEXT.freeze
+  Usage:
+    scripts/new-formula NAME VERSION ARM64_URL ARM64_SHA256 X86_64_URL X86_64_SHA256
+TEXT
+
+abort USAGE unless ARGV.length == 6
+
+name, version, arm64_url, arm64_sha256, x86_64_url, x86_64_sha256 = ARGV
+
+abort "NAME must use lowercase letters, numbers, and hyphens." unless name.match?(/\A[a-z][a-z0-9-]*\z/)
+abort "VERSION must not be empty." if version.empty?
+
+{
+  "ARM64_URL" => arm64_url,
+  "X86_64_URL" => x86_64_url,
+}.each do |label, value|
+  uri = URI.parse(value)
+  abort "#{label} must be an HTTPS URL." unless uri.is_a?(URI::HTTPS) && uri.host
+rescue URI::InvalidURIError
+  abort "#{label} must be a valid HTTPS URL."
+end
+
+{
+  "ARM64_SHA256" => arm64_sha256,
+  "X86_64_SHA256" => x86_64_sha256,
+}.each do |label, value|
+  abort "#{label} must contain 64 lowercase hexadecimal characters." unless value.match?(/\A[0-9a-f]{64}\z/)
+end
+
+repository = Pathname(__dir__).parent
+template_path = repository / "templates/binary-formula.rb.erb"
+formula_path = repository / "Formula/#{name}.rb"
+
+abort "Formula already exists: #{formula_path}" if formula_path.exist?
+
+class_name = name.split("-").map(&:capitalize).join
+template = ERB.new(template_path.read, trim_mode: "-")
+formula_path.write(template.result(binding))
+
+puts "Created #{formula_path.relative_path_from(repository)}"
+puts "Edit the description and homepage before you commit the formula."
