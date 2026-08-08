@@ -26,6 +26,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Install Homebrew on Linux
+        if: runner.os == 'Linux'
+        uses: Homebrew/actions/setup-homebrew@master
+
       - name: Register checkout as tap
         run: brew tap OpenRouterTeam/tap "$GITHUB_WORKSPACE"
 
