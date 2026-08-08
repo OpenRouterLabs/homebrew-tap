@@ -16,10 +16,22 @@ class Ori < Formula
 
   def install
     binary = Hardware::CPU.arm? ? "ori-darwin-arm64" : "ori-darwin-x64"
-    bin.install binary => "ori"
+    libexec.install binary => "ori-homebrew"
+    chmod 0755, libexec/"ori-homebrew"
+    (bin/"ori").write_env_script libexec/"ori-homebrew", ORI_NO_UPDATE_CHECK: "1"
+  end
+
+  def caveats
+    <<~EOS
+      This installation is managed by Homebrew. Upgrade it with:
+        brew upgrade ori
+
+      Ori's built-in self-update mechanism is disabled for this installation.
+    EOS
   end
 
   test do
+    assert_match "ORI_NO_UPDATE_CHECK", (bin/"ori").read
     assert_match version.to_s, shell_output("#{bin}/ori --version")
   end
 end
