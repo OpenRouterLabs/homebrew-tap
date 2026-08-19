@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+ruby -c scripts/new-formula
+
+shopt -s nullglob
+formulae=(Formula/*.rb)
+
+if (( ${#formulae[@]} == 0 )); then
+  echo "No formulae exist. The repository scripts are valid."
+  exit 0
+fi
+
+HOMEBREW_DEVELOPER=1 brew style "${formulae[@]}"
+
+tap_path="$(brew --repository OpenRouterTeam/tap 2>/dev/null || true)"
+repository_path="$(pwd -P)"
+tap_repository_path=""
+
+if [[ -d "$tap_path" ]]; then
+  tap_repository_path="$(cd "$tap_path" && pwd -P)"
+fi
+
+if [[ "$tap_repository_path" == "$repository_path" ]]; then
+  for formula in "${formulae[@]}"; do
+    formula_name="$(basename "$formula" .rb)"
+    HOMEBREW_DEVELOPER=1 brew audit --strict "OpenRouterTeam/tap/$formula_name"
+  done
+else
+  echo "Skipping brew audit because this checkout is not registered as OpenRouterTeam/tap."
+fi
