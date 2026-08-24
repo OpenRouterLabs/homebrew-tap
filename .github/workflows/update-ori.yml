@@ -1,0 +1,133 @@
+name: Update Ori
+
+on:
+  repository_dispatch:
+    types:
+      - ori-released
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-ori-formula
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Reconcile Ori formula
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Mint tap updater token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.ORI_RELEASE_GH_APP_CLIENT_ID }}
+          private-key: ${{ secrets.ORI_RELEASE_GH_APP_PRIVATE_KEY }}
+          owner: OpenRouterLabs
+          repositories: homebrew-tap
+
+      - name: Check out tap
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Add Homebrew to PATH
+        run: echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
+
+      - name: Reconcile latest stable Ori release
+        id: update
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          scripts/update-ori
+          version="$(ruby -ne 'puts $1 if $_ =~ /^  version "([^"]+)"$/' Formula/ori.rb)"
+          [ -n "$version" ] || {
+            echo "Formula/ori.rb has no version declaration." >&2
+            exit 1
+          }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -- Formula/ori.rb; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Register checkout as tap
+        if: steps.update.outputs.changed == 'true'
+        run: brew tap OpenRouterTeam/tap "$GITHUB_WORKSPACE"
+
+      - name: Check updated formula
+        if: steps.update.outputs.changed == 'true'
+        run: scripts/check
+
+      - name: Open or update formula pull request
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ steps.update.outputs.version }}
+        run: |
+          set -euo pipefail
+          branch="automation/update-ori"
+          remote_formula="$RUNNER_TEMP/remote-ori.rb"
+
+          number="$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --head "$branch" \
+            --base main \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')"
+
+          branch_current=false
+          if git fetch origin "$branch:refs/remotes/origin/$branch" 2>/dev/null &&
+             git show "origin/$branch:Formula/ori.rb" > "$remote_formula" 2>/dev/null &&
+             cmp -s Formula/ori.rb "$remote_formula"; then
+            branch_current=true
+          fi
+
+          if [ "$branch_current" = true ] && [ -n "$number" ]; then
+            echo "The existing update pull request already proposes Ori $VERSION."
+            exit 0
+          fi
+
+          if [ "$branch_current" != true ]; then
+            git config user.name "ori-homebrew-updater[bot]"
+            git config user.email "ori-homebrew-updater[bot]@users.noreply.github.com"
+            git switch -C "$branch"
+            git add Formula/ori.rb
+            git commit -m "ori $VERSION"
+            git push --force origin "$branch"
+          fi
+
+          tag="cli-${VERSION//+/-}"
+          body="$RUNNER_TEMP/update-ori-pr.md"
+          cat > "$body" <<BODY
+          Updates the Ori formula to the latest stable release.
+
+          - Version: \`$VERSION\`
+          - Release: https://github.com/OpenRouterLabs/ori-releases/releases/tag/$tag
+          - Validation: \`scripts/check\`
+
+          This pull request is maintained by the \`Update Ori\` workflow.
+          BODY
+
+          if [ -n "$number" ]; then
+            gh pr edit "$number" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Update Ori to $VERSION" \
+              --body-file "$body"
+          else
+            gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --base main \
+              --head "$branch" \
+              --title "Update Ori to $VERSION" \
+              --body-file "$body"
+          fi

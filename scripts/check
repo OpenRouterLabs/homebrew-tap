@@ -4,6 +4,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 ruby -c scripts/new-formula
+ruby -c scripts/update-ori
+ruby -c scripts/update-ori-test
+ruby scripts/update-ori-test
 
 shopt -s nullglob
 formulae=(Formula/*.rb)
