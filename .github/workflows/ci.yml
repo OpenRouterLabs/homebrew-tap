@@ -31,7 +31,7 @@ jobs:
         run: echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
 
       - name: Register checkout as tap
-        run: brew tap OpenRouterTeam/tap "$GITHUB_WORKSPACE"
+        run: brew tap OpenRouterLabs/tap "$GITHUB_WORKSPACE"
 
       - name: Check formulae
         run: scripts/check
@@ -40,5 +40,5 @@ jobs:
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"
         run: |
-          brew install OpenRouterTeam/tap/ori
-          brew test OpenRouterTeam/tap/ori
+          brew install OpenRouterLabs/tap/ori
+          brew test OpenRouterLabs/tap/ori
