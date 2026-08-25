@@ -49,12 +49,12 @@ If the formula is stale, the workflow performs these steps:
 2. Run `scripts/check`.
 3. Open or update the `automation/update-ori` pull request.
 
-The workflow requires these organization secrets:
+The workflow requires these Actions secrets:
 
-- `ORI_RELEASE_GH_APP_CLIENT_ID`
-- `ORI_RELEASE_GH_APP_PRIVATE_KEY`
+- `ORI_HOMEBREW_GH_APP_CLIENT_ID`
+- `ORI_HOMEBREW_GH_APP_PRIVATE_KEY`
 
-Make these secrets available to this repository. Install the release App on `OpenRouterLabs/homebrew-tap` with these repository permissions:
+Make these secrets available to this repository. Install the `Ori Homebrew Updater` App on `OpenRouterLabs/homebrew-tap` with these repository permissions:
 
 - Contents: read and write
 - Pull requests: read and write

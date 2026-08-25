@@ -100,5 +100,8 @@ assert(workflow.include?("schedule:"), "workflow has no reconciliation schedule"
 assert(workflow.include?("workflow_dispatch:"), "workflow cannot run manually")
 assert(workflow.include?("cancel-in-progress: false"), "workflow can cancel an update")
 assert(workflow.include?("scripts/update-ori"), "workflow does not run the updater")
+assert(workflow.include?("ORI_HOMEBREW_GH_APP_CLIENT_ID"), "workflow uses the wrong App client")
+assert(workflow.include?("ORI_HOMEBREW_GH_APP_PRIVATE_KEY"), "workflow uses the wrong App key")
+assert(!workflow.include?("ORI_RELEASE_GH_APP"), "workflow can access the release publisher App")
 
 puts "update-ori tests passed"
