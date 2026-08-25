@@ -1,0 +1,107 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "yaml"
+
+load File.expand_path("update-ori", __dir__)
+
+OLD_TAG = "cli-0.7.1-6fb9ea6"
+NEW_TAG = "cli-0.10.1-b41708f"
+NEW_VERSION = "0.10.1+b41708f"
+CHECKSUMS = {}
+OriFormulaUpdater::ASSETS.each_with_index do |asset, index|
+  CHECKSUMS[asset] = (index + 10).to_s(16) * 64
+end
+CHECKSUMS.freeze
+
+FORMULA = <<~RUBY.freeze
+  class Ori < Formula
+    version "0.7.1+6fb9ea6"
+
+    on_macos do
+      if Hardware::CPU.arm?
+        url "https://github.com/OpenRouterLabs/ori-releases/releases/download/#{OLD_TAG}/ori-darwin-arm64"
+        sha256 "#{"1" * 64}"
+      else
+        url "https://github.com/OpenRouterLabs/ori-releases/releases/download/#{OLD_TAG}/ori-darwin-x64"
+        sha256 "#{"2" * 64}"
+      end
+    end
+
+    on_linux do
+      if Hardware::CPU.arm?
+        url "https://github.com/OpenRouterLabs/ori-releases/releases/download/#{OLD_TAG}/ori-linux-arm64"
+        sha256 "#{"3" * 64}"
+      else
+        url "https://github.com/OpenRouterLabs/ori-releases/releases/download/#{OLD_TAG}/ori-linux-x64"
+        sha256 "#{"4" * 64}"
+      end
+    end
+  end
+RUBY
+
+def assert(condition, message)
+  raise message unless condition
+end
+
+def assert_raises(expected_message)
+  error = begin
+    yield
+    nil
+  rescue StandardError => caught
+    caught
+  end
+
+  raise "Expected an error containing #{expected_message.inspect}." unless error&.message&.include?(expected_message)
+end
+
+updated = OriFormulaUpdater.rewrite_formula(
+  FORMULA,
+  tag: NEW_TAG,
+  version: NEW_VERSION,
+  checksums: CHECKSUMS
+)
+
+assert(updated.include?(%(version "#{NEW_VERSION}")), "version was not updated")
+OriFormulaUpdater::ASSETS.each do |asset|
+  assert(updated.include?("/#{NEW_TAG}/#{asset}"), "URL was not updated for #{asset}")
+  assert(updated.include?(%(sha256 "#{CHECKSUMS.fetch(asset)}")), "checksum was not updated for #{asset}")
+end
+assert(
+  OriFormulaUpdater.rewrite_formula(updated, tag: NEW_TAG, version: NEW_VERSION, checksums: CHECKSUMS) == updated,
+  "rewrite is not idempotent"
+)
+
+checksum_text = CHECKSUMS.map { |asset, checksum| "#{checksum}  #{asset}" }.join("\n")
+assert(OriFormulaUpdater.parse_checksums(checksum_text) == CHECKSUMS, "checksum parsing changed values")
+assert_raises("SHA256SUMS is missing") do
+  without_linux_x64 = checksum_text.lines.reject { |line| line.include?("ori-linux-x64") }.join
+  OriFormulaUpdater.parse_checksums(without_linux_x64)
+end
+assert_raises("does not match version") do
+  OriFormulaUpdater.rewrite_formula(FORMULA, tag: OLD_TAG, version: NEW_VERSION, checksums: CHECKSUMS)
+end
+assert_raises("Formula URL set") do
+  formula_without_linux_x64 = FORMULA.lines.reject { |line| line.include?("ori-linux-x64") }.join
+  OriFormulaUpdater.rewrite_formula(
+    formula_without_linux_x64,
+    tag: NEW_TAG,
+    version: NEW_VERSION,
+    checksums: CHECKSUMS
+  )
+end
+
+workflow_path = OriFormulaUpdater::REPOSITORY_ROOT / ".github/workflows/update-ori.yml"
+workflow = workflow_path.read
+YAML.parse(workflow)
+assert(workflow.include?("repository_dispatch:"), "workflow does not accept repository dispatches")
+assert(workflow.include?("- ori-released"), "workflow does not accept ori-released")
+assert(workflow.include?("schedule:"), "workflow has no reconciliation schedule")
+assert(workflow.include?("workflow_dispatch:"), "workflow cannot run manually")
+assert(workflow.include?("cancel-in-progress: false"), "workflow can cancel an update")
+assert(workflow.include?("scripts/update-ori"), "workflow does not run the updater")
+assert(workflow.include?("ORI_HOMEBREW_GH_APP_CLIENT_ID"), "workflow uses the wrong App client")
+assert(workflow.include?("ORI_HOMEBREW_GH_APP_PRIVATE_KEY"), "workflow uses the wrong App key")
+assert(!workflow.include?("ORI_RELEASE_GH_APP"), "workflow can access the release publisher App")
+
+puts "update-ori tests passed"

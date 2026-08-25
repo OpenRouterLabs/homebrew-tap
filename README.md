@@ -10,6 +10,8 @@ Homebrew exposes this repository as the `OpenRouterTeam/tap` tap.
 - `templates/` contains the binary formula template.
 - `scripts/new-formula` creates a formula from release metadata.
 - `scripts/check` checks the repository and its formulae.
+- `scripts/update-ori` reconciles the Ori formula with the latest stable release.
+- `.github/workflows/update-ori.yml` opens or updates the Ori formula pull request.
 
 ## Requirements
 
@@ -34,6 +36,37 @@ scripts/new-formula \
 The command creates `Formula/<name>.rb`. Edit the description and homepage after the command completes.
 
 The generated test expects `<name> --version` to print the release version. Change the test if the tool uses a different command.
+
+## Update Ori
+
+The `Update Ori` workflow listens for the `ori-released` repository dispatch. It also runs each hour and supports manual runs.
+
+Each run reads the latest stable release from `OpenRouterLabs/ori-releases`. The workflow does not trust the dispatch payload as release state.
+
+If the formula is stale, the workflow performs these steps:
+
+1. Update the version, immutable URLs, and four checksums in `Formula/ori.rb`.
+2. Run `scripts/check`.
+3. Open or update the `automation/update-ori` pull request.
+
+The workflow requires these Actions secrets:
+
+- `ORI_HOMEBREW_GH_APP_CLIENT_ID`
+- `ORI_HOMEBREW_GH_APP_PRIVATE_KEY`
+
+Make these secrets available to this repository. Install the `Ori Homebrew Updater` App on `OpenRouterLabs/homebrew-tap` with these repository permissions:
+
+- Contents: read and write
+- Pull requests: read and write
+
+Run the updater locally:
+
+```sh
+scripts/update-ori
+scripts/check
+```
+
+The updater stops if release metadata is incomplete or the formula has an unexpected structure.
 
 ## Check the tap
 

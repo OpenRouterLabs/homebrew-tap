@@ -1,0 +1,160 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "open3"
+require "pathname"
+require "tmpdir"
+
+module OriFormulaUpdater
+  RELEASE_REPOSITORY = "OpenRouterLabs/ori-releases"
+  RELEASE_URL_PREFIX = "https://github.com/#{RELEASE_REPOSITORY}/releases/download"
+  REPOSITORY_ROOT = Pathname(__dir__).parent
+  FORMULA_PATH = REPOSITORY_ROOT / "Formula/ori.rb"
+  ASSETS = %w[
+    ori-darwin-arm64
+    ori-darwin-x64
+    ori-linux-arm64
+    ori-linux-x64
+  ].freeze
+  ASSET_PATTERN = Regexp.union(ASSETS)
+  VERSION_PATTERN = /\A[0-9A-Za-z][0-9A-Za-z.+-]*\z/
+  CHECKSUM_PATTERN = /\A[0-9a-f]{64}\z/
+
+  module_function
+
+  def command_output!(*command)
+    stdout, stderr, status = Open3.capture3(*command)
+    return stdout if status.success?
+
+    detail = stderr.strip
+    detail = "exit code #{status.exitstatus}" if detail.empty?
+    raise "#{command.join(" ")} failed: #{detail}"
+  end
+
+  def parse_checksums(contents)
+    checksums = {}
+
+    contents.each_line do |line|
+      checksum, asset, extra = line.split
+      next unless ASSETS.include?(asset)
+
+      raise "Malformed checksum line for #{asset}." unless extra.nil? && checksum&.match?(CHECKSUM_PATTERN)
+      raise "Duplicate checksum for #{asset}." if checksums.key?(asset)
+
+      checksums[asset] = checksum
+    end
+
+    missing = ASSETS - checksums.keys
+    raise "SHA256SUMS is missing: #{missing.join(", ")}." unless missing.empty?
+
+    checksums.freeze
+  end
+
+  def validate_release_identity!(tag:, version:)
+    raise "Release version is empty or invalid: #{version.inspect}." unless version.match?(VERSION_PATTERN)
+
+    expected_tag = "cli-#{version.tr("+", "-")}"
+    raise "Release tag #{tag.inspect} does not match version #{version.inspect}." unless tag == expected_tag
+  end
+
+  def rewrite_formula(contents, tag:, version:, checksums:)
+    validate_release_identity!(tag: tag, version: version)
+
+    version_count = 0
+    urls = []
+    checksum_lines = []
+    awaiting_checksum = nil
+
+    updated = contents.lines.map do |line|
+      newline = line.end_with?("\n") ? "\n" : ""
+
+      if awaiting_checksum
+        match = line.match(/\A(\s*)sha256 "[0-9a-f]{64}"\n?\z/)
+        raise "Expected sha256 immediately after the #{awaiting_checksum} URL." unless match
+
+        asset = awaiting_checksum
+        awaiting_checksum = nil
+        checksum_lines << asset
+        next %(#{match[1]}sha256 "#{checksums.fetch(asset)}"#{newline})
+      end
+
+      if (match = line.match(/\A(\s*)version "[^"]+"\n?\z/))
+        version_count += 1
+        next %(#{match[1]}version "#{version}"#{newline})
+      end
+
+      url_pattern = %r{\A(\s*)url "#{Regexp.escape(RELEASE_URL_PREFIX)}/[^/]+/(#{ASSET_PATTERN})"\n?\z}
+      if (match = line.match(url_pattern))
+        asset = match[2]
+        raise "Duplicate URL for #{asset}." if urls.include?(asset)
+
+        urls << asset
+        awaiting_checksum = asset
+        next %(#{match[1]}url "#{RELEASE_URL_PREFIX}/#{tag}/#{asset}"#{newline})
+      end
+
+      line
+    end.join
+
+    raise "Formula must contain exactly one version declaration." unless version_count == 1
+    raise "Formula URL set does not match required assets." unless urls.sort == ASSETS.sort
+    raise "Formula checksum set does not match required assets." unless checksum_lines.sort == ASSETS.sort
+    raise "Formula ends before the #{awaiting_checksum} checksum." if awaiting_checksum
+
+    updated
+  end
+
+  def latest_release
+    tag = command_output!(
+      "gh",
+      "api",
+      "repos/#{RELEASE_REPOSITORY}/releases/latest",
+      "--jq",
+      ".tag_name"
+    ).strip
+
+    Dir.mktmpdir("ori-homebrew-update") do |directory|
+      command_output!(
+        "gh",
+        "release",
+        "download",
+        tag,
+        "--repo",
+        RELEASE_REPOSITORY,
+        "--pattern",
+        "version",
+        "--pattern",
+        "SHA256SUMS",
+        "--dir",
+        directory
+      )
+
+      version = File.read(File.join(directory, "version")).strip
+      checksums = parse_checksums(File.read(File.join(directory, "SHA256SUMS")))
+      return { tag: tag, version: version, checksums: checksums }
+    end
+  end
+
+  def run
+    release = latest_release
+    current = FORMULA_PATH.read
+    updated = rewrite_formula(current, **release)
+
+    if updated == current
+      puts "Formula/ori.rb is already current at #{release.fetch(:version)}."
+      return
+    end
+
+    FORMULA_PATH.write(updated)
+    puts "Updated Formula/ori.rb to #{release.fetch(:version)} (#{release.fetch(:tag)})."
+  end
+end
+
+if $PROGRAM_NAME == __FILE__
+  begin
+    OriFormulaUpdater.run
+  rescue StandardError => error
+    warn "update-ori: #{error.message}"
+    exit 1
+  end
+end
