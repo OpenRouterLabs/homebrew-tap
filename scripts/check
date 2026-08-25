@@ -18,7 +18,7 @@ fi
 
 HOMEBREW_DEVELOPER=1 brew style "${formulae[@]}"
 
-tap_path="$(brew --repository OpenRouterTeam/tap 2>/dev/null || true)"
+tap_path="$(brew --repository OpenRouterLabs/tap 2>/dev/null || true)"
 repository_path="$(pwd -P)"
 tap_repository_path=""
 
@@ -29,8 +29,8 @@ fi
 if [[ "$tap_repository_path" == "$repository_path" ]]; then
   for formula in "${formulae[@]}"; do
     formula_name="$(basename "$formula" .rb)"
-    HOMEBREW_DEVELOPER=1 brew audit --strict "OpenRouterTeam/tap/$formula_name"
+    HOMEBREW_DEVELOPER=1 brew audit --strict "OpenRouterLabs/tap/$formula_name"
   done
 else
-  echo "Skipping brew audit because this checkout is not registered as OpenRouterTeam/tap."
+  echo "Skipping brew audit because this checkout is not registered as OpenRouterLabs/tap."
 fi

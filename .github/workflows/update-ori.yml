@@ -61,7 +61,7 @@ jobs:
 
       - name: Register checkout as tap
         if: steps.update.outputs.changed == 'true'
-        run: brew tap OpenRouterTeam/tap "$GITHUB_WORKSPACE"
+        run: brew tap OpenRouterLabs/tap "$GITHUB_WORKSPACE"
 
       - name: Check updated formula
         if: steps.update.outputs.changed == 'true'

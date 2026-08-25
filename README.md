@@ -2,7 +2,7 @@
 
 This repository contains Homebrew formulae for OpenRouter tools.
 
-Homebrew exposes this repository as the `OpenRouterTeam/tap` tap.
+Homebrew exposes this repository as the `OpenRouterLabs/tap` tap.
 
 ## Repository layout
 
@@ -78,7 +78,7 @@ scripts/check
 
 The check stops if a formula has invalid Ruby syntax or Homebrew style errors.
 
-If this checkout is registered as `OpenRouterTeam/tap`, the check also runs a strict Homebrew audit.
+If this checkout is registered as `OpenRouterLabs/tap`, the check also runs a strict Homebrew audit.
 
 ## Test a formula locally
 
@@ -100,7 +100,7 @@ brew uninstall <name>
 Add the tap and install a formula:
 
 ```sh
-brew tap OpenRouterTeam/tap
+brew tap OpenRouterLabs/tap
 brew install <name>
 ```
 

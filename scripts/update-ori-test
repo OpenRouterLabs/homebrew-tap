@@ -104,4 +104,15 @@ assert(workflow.include?("ORI_HOMEBREW_GH_APP_CLIENT_ID"), "workflow uses the wr
 assert(workflow.include?("ORI_HOMEBREW_GH_APP_PRIVATE_KEY"), "workflow uses the wrong App key")
 assert(!workflow.include?("ORI_RELEASE_GH_APP"), "workflow can access the release publisher App")
 
+canonical_tap_files = %w[
+  README.md
+  scripts/check
+  .github/workflows/ci.yml
+  .github/workflows/update-ori.yml
+]
+legacy_tap_files = canonical_tap_files.select do |path|
+  (OriFormulaUpdater::REPOSITORY_ROOT / path).read.include?("OpenRouterTeam")
+end
+assert(legacy_tap_files.empty?, "legacy tap namespace remains in: #{legacy_tap_files.join(", ")}")
+
 puts "update-ori tests passed"
