@@ -1,26 +1,26 @@
 class Ori < Formula
   desc "CLI for running coding agents and building declarative agents"
   homepage "https://github.com/OpenRouterIncubator/ori"
-  version "0.15.7+d702b99"
+  version "0.16.0+a55b08b"
   license "Apache-2.0"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/OpenRouterLabs/ori-releases/releases/download/cli-0.15.7-d702b99/ori-darwin-arm64"
-      sha256 "cf01640563a4e6d8def4fb2759eb9ece980d473ff5153cb201f7e2c3d2b5fc5d"
+      url "https://github.com/OpenRouterLabs/ori-releases/releases/download/cli-0.16.0-a55b08b/ori-darwin-arm64"
+      sha256 "e2fdfadcaf3d4baf3c73917837eaa5ec29827f774cc8f721101caa559099df7c"
     else
-      url "https://github.com/OpenRouterLabs/ori-releases/releases/download/cli-0.15.7-d702b99/ori-darwin-x64"
-      sha256 "e284a0234136283c810e389ec1b35d06711fd0d8b1c4ce862092bef158274614"
+      url "https://github.com/OpenRouterLabs/ori-releases/releases/download/cli-0.16.0-a55b08b/ori-darwin-x64"
+      sha256 "07fceb2e9570f13a77435b260cc86cd36d8b13591c88487343bbd348fdb23f6d"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/OpenRouterLabs/ori-releases/releases/download/cli-0.15.7-d702b99/ori-linux-arm64"
-      sha256 "57e7e36f82acfc0af7c13f4bdd67ecd000d3d1ec88c3799b5d182c8cd84f7e55"
+      url "https://github.com/OpenRouterLabs/ori-releases/releases/download/cli-0.16.0-a55b08b/ori-linux-arm64"
+      sha256 "ffb84142dab50ed6a682d5610356b7610855ab6109f196bac9d1eec01bb3302a"
     else
-      url "https://github.com/OpenRouterLabs/ori-releases/releases/download/cli-0.15.7-d702b99/ori-linux-x64"
-      sha256 "1e7bde896e823301d321ae5b200acbf016b5da2e1f9f62feeee4d7b84923917b"
+      url "https://github.com/OpenRouterLabs/ori-releases/releases/download/cli-0.16.0-a55b08b/ori-linux-x64"
+      sha256 "63644ba5dacd12e4d0174478457b1fca2ffda98e902773b7842987ff92f9672c"
     end
   end
 
